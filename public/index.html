@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Huffman Compressor</title>
+    <style>
+        /* General styling to make it look modern */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        /* The white box in the center */
+        .upload-card {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+        h2 { color: #333; margin-bottom: 20px; }
+        input[type="file"] { margin: 20px 0; }
+        /* The button styling */
+        .btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .btn:hover { background-color: #0056b3; }
+        #status { margin-top: 20px; color: #666; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <div class="upload-card">
+        <h3>Huffman Compressor</h3>
+        <p>Select any file (TXT, MP3, MP4) to compress
+        
+        <!-- The File Input -->
+       <input type="file" id="fileInput" accept="*/*">
+        <br>
+        
+        <!-- The Trigger Button -->
+        <button class="btn" onclick="uploadAndCompress()">Compress File</button>
+        
+        <!-- Where we show the user what's happening -->
+        <div id="status"></div>
+    </div>
+
+    <script>
+    async function uploadAndCompress() {
+        const fileInput = document.getElementById('fileInput');
+        const status = document.getElementById('status');
+
+        if (!fileInput.files[0]) {
+            alert("Please select a file first!");
+            return;
+        }
+
+        status.innerText = "Connecting to cloud server...";
+
+        // This is the actual "Handshake" with your server.js
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        try {
+            const response = await fetch('/compress', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            
+            // Now we tell the browser to show the result!
+            status.innerHTML = `
+    <div style="margin-top: 20px; color: green; font-weight: bold;">
+        ✅ ${data.message}
+    </div>
+    <div style="text-align: left; background: #f4f4f4; padding: 15px; border-radius: 8px; margin-top: 10px; font-family: monospace;">
+        <strong>Original Size:</strong> ${data.originalSize} <br>
+        <strong>Compressed Bits:</strong> ${data.compressedBits} <br>
+        <strong>Space Saved:</strong> <span style="color: blue;">${data.ratio}</span> <br>
+        <hr>
+        <strong>Binary Preview (First 100 bits):</strong> <br>
+        <div style="word-break: break-all; font-size: 11px; color: #666; margin-bottom: 15px;">${data.preview}...</div>
+        
+        <!-- NEW: THE DOWNLOAD BUTTON -->
+        <a href="/download?file=${data.fileName}" 
+           style="display: block; text-align: center; padding: 10px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; font-family: sans-serif;">
+           📥 Download .huff File
+        </a>
+    </div>
+`;
+        } catch (error) {
+            status.innerText = "Error: Could not connect to server.";
+            console.error(error);
+        }
+    }
+</script>
+</body>
+</html>
