@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cloud Huffman Compressor</title>
     <style>
+        /* General styling */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f0f2f5;
@@ -24,7 +25,7 @@
             width: 100%;
             max-width: 450px;
         }
-        h3 { color: #333; margin-bottom: 5px; }
+        h3 { color: #333; margin-bottom: 10px; }
         .section-divider {
             margin: 30px 0;
             border-top: 2px dashed #eee;
@@ -83,6 +84,7 @@
     </div>
 
 <script>
+    // Global variable to store the Huffman Tree for the current session
     let huffmanRoot = null;
 
     async function uploadAndCompress() {
@@ -106,12 +108,14 @@
             });
 
             const data = await response.json();
+            
+            // Store the root tree returned from server for decompression
             huffmanRoot = data.root; 
             
             status.innerHTML = `
                 <div style="margin-top: 10px; color: green; font-weight: bold;">✅ Compression Complete!</div>
                 <div class="result-box">
-                    <strong>Original Size:</strong> ${data.originalSize} bytes<br>
+                    <strong>Original Size:</strong> ${data.originalSize} bytes <br>
                     <strong>Space Saved:</strong> <span style="color: blue;">${data.ratio}</span> <br>
                     <hr>
                     <strong>Binary Preview:</strong> <br>
@@ -148,11 +152,20 @@
             const encodedString = e.target.result;
             try {
                 const decodedText = decode(encodedString, huffmanRoot);
+                
+                // Create a Blob from the decoded text for downloading
+                const blob = new Blob([decodedText], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+
                 status.innerHTML = `
                     <div style="margin-top: 10px; color: green; font-weight: bold;">✅ Decoded Successfully:</div>
                     <div class="result-box" style="background: #eef9f0; color: #2d5a27;">
                         ${decodedText}
-                    </div>`;
+                    </div>
+                    <a href="${url}" download="decompressed_result.txt" 
+                       style="display: block; text-align: center; padding: 12px; background: #28a745; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">
+                       📥 Download Decompressed Text
+                    </a>`;
             } catch (err) {
                 status.innerText = "Error during decoding. Ensure you are using the correct .huff file.";
             }
@@ -161,6 +174,7 @@
         reader.readAsText(file);
     }
 
+    // Decoding Algorithm: Traverses the tree based on 0s and 1s
     function decode(encodedString, root) {
         let result = "";
         let curr = root;
@@ -172,6 +186,7 @@
                 curr = curr.right;
             }
 
+            // Leaf node check
             if (!curr.left && !curr.right) {
                 result += curr.char;
                 curr = root; 
