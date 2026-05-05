@@ -5,17 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cloud Huffman Compressor</title>
     <style>
-        /* General styling to make it look modern */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f0f2f5;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
+            padding: 20px;
         }
-        /* The white box in the center */
         .upload-card {
             background: white;
             padding: 40px;
@@ -23,11 +22,14 @@
             box-shadow: 0 8px 30px rgba(0,0,0,0.1);
             text-align: center;
             width: 100%;
-            max-width: 400px;
+            max-width: 450px;
         }
-        h2 { color: #333; margin-bottom: 20px; }
-        input[type="file"] { margin: 20px 0; }
-        /* The button styling */
+        h3 { color: #333; margin-bottom: 5px; }
+        .section-divider {
+            margin: 30px 0;
+            border-top: 2px dashed #eee;
+        }
+        input[type="file"] { margin: 15px 0; width: 100%; }
         .btn {
             background-color: #007bff;
             color: white;
@@ -37,29 +39,52 @@
             cursor: pointer;
             font-size: 16px;
             transition: background 0.3s;
+            width: 100%;
+            margin-bottom: 10px;
+            font-weight: bold;
         }
+        .btn-green { background-color: #28a745; }
+        .btn-green:hover { background-color: #218838; }
         .btn:hover { background-color: #0056b3; }
-        #status { margin-top: 20px; color: #666; font-size: 14px; }
+        #status, #decompressStatus { margin-top: 20px; color: #666; font-size: 14px; }
+        
+        .result-box {
+            text-align: left; 
+            background: #f4f4f4; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-top: 10px; 
+            font-family: monospace;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
 
     <div class="upload-card">
-        <h3>Huffman Compressor</h3>
-        <p>Select any file (TXT, MP3, MP4) to compress
+        <h3>Step 1: Huffman Compressor</h3>
+        <p style="font-size: 14px; color: #666;">Convert text to compressed binary codes</p>
         
-        <!-- The File Input -->
-       <input type="file" id="fileInput" accept="*/*">
-        <br>
-        
-        <!-- The Trigger Button -->
+        <input type="file" id="fileInput" accept="*/*">
         <button class="btn" onclick="uploadAndCompress()">Compress File</button>
-        
-        <!-- Where we show the user what's happening -->
         <div id="status"></div>
+
+        <div class="section-divider"></div>
+
+        <h3>Step 2: Human-Readable Decompressor</h3>
+        <p style="font-size: 14px; color: #666;">Restore your .huff file back to original text</p>
+        
+        <input type="file" id="decompressInput">
+        <button class="btn btn-green" onclick="decompressFile()">Decompress Now</button>
+        
+        <div id="decompressStatus"></div>
     </div>
 
-    <script>
+<script>
+    let huffmanRoot = null;
+
     async function uploadAndCompress() {
         const fileInput = document.getElementById('fileInput');
         const status = document.getElementById('status');
@@ -71,7 +96,6 @@
 
         status.innerText = "Connecting to cloud server...";
 
-        // This is the actual "Handshake" with your server.js
         const formData = new FormData();
         formData.append('file', fileInput.files[0]);
 
@@ -82,31 +106,78 @@
             });
 
             const data = await response.json();
+            huffmanRoot = data.root; 
             
-            // Now we tell the browser to show the result!
             status.innerHTML = `
-    <div style="margin-top: 20px; color: green; font-weight: bold;">
-        ✅ ${data.message}
-    </div>
-    <div style="text-align: left; background: #f4f4f4; padding: 15px; border-radius: 8px; margin-top: 10px; font-family: monospace;">
-        <strong>Original Size:</strong> ${data.originalSize} <br>
-        <strong>Compressed Bits:</strong> ${data.compressedBits} <br>
-        <strong>Space Saved:</strong> <span style="color: blue;">${data.ratio}</span> <br>
-        <hr>
-        <strong>Binary Preview (First 100 bits):</strong> <br>
-        <div style="word-break: break-all; font-size: 11px; color: #666; margin-bottom: 15px;">${data.preview}...</div>
-        
-        <!-- NEW: THE DOWNLOAD BUTTON -->
-        <a href="/download?file=${data.fileName}" 
-           style="display: block; text-align: center; padding: 10px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; font-family: sans-serif;">
-           📥 Download .huff File
-        </a>
-    </div>
-`;
+                <div style="margin-top: 10px; color: green; font-weight: bold;">✅ Compression Complete!</div>
+                <div class="result-box">
+                    <strong>Original Size:</strong> ${data.originalSize} bytes<br>
+                    <strong>Space Saved:</strong> <span style="color: blue;">${data.ratio}</span> <br>
+                    <hr>
+                    <strong>Binary Preview:</strong> <br>
+                    <div style="font-size: 11px; color: #666; margin-bottom: 10px;">${data.preview}...</div>
+                    <a href="/download?file=${data.fileName}" 
+                       style="display: block; text-align: center; padding: 10px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                       📥 Download .huff File
+                    </a>
+                </div>`;
         } catch (error) {
             status.innerText = "Error: Could not connect to server.";
             console.error(error);
         }
+    }
+
+    function decompressFile() {
+        const fileInput = document.getElementById('decompressInput');
+        const status = document.getElementById('decompressStatus');
+
+        if (fileInput.files.length === 0) {
+            alert("Please select a compressed file first!");
+            return;
+        }
+
+        if (!huffmanRoot) {
+            alert("Error: No Huffman Tree found. Please compress a file in this session first!");
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            const encodedString = e.target.result;
+            try {
+                const decodedText = decode(encodedString, huffmanRoot);
+                status.innerHTML = `
+                    <div style="margin-top: 10px; color: green; font-weight: bold;">✅ Decoded Successfully:</div>
+                    <div class="result-box" style="background: #eef9f0; color: #2d5a27;">
+                        ${decodedText}
+                    </div>`;
+            } catch (err) {
+                status.innerText = "Error during decoding. Ensure you are using the correct .huff file.";
+            }
+        };
+
+        reader.readAsText(file);
+    }
+
+    function decode(encodedString, root) {
+        let result = "";
+        let curr = root;
+        
+        for (let bit of encodedString) {
+            if (bit === '0') {
+                curr = curr.left;
+            } else if (bit === '1') {
+                curr = curr.right;
+            }
+
+            if (!curr.left && !curr.right) {
+                result += curr.char;
+                curr = root; 
+            }
+        }
+        return result;
     }
 </script>
 </body>
